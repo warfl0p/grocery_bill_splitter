@@ -1,32 +1,18 @@
 import streamlit as st
 import pandas as pd
 from time import strftime
-from io import StringIO
 import os
+import numpy as np
 
 
 def save_grocery_list(df: pd.DataFrame):
     timestamp = strftime("%Y_%m_%d_%H_%M_%S")
-
     df.to_csv(f"app/data/grocery_list_{timestamp}.csv")
-
-
-def import_grocery_list():
-    uploaded_file = st.file_uploader("Choose a file")
-    if uploaded_file is not None:
-        # To read file as bytes:
-        bytes_data = uploaded_file.getvalue()
-        st.write(bytes_data)
-
-        # Can be used wherever a "file-like" object is accepted:
-        dataframe = pd.read_csv(uploaded_file)
-        df = pd.DataFrame(dataframe)
-        return df
 
 
 def check_names(roommates):
     # check it only contains a,k,l,m or d
-    if roommates == None:
+    if roommates is None:
         return False
     if "A" in roommates and len(roommates) > 1:
         st.write("Error: only one initial is allowed when using A")
@@ -38,7 +24,7 @@ def check_names(roommates):
     return True
 
 
-def handle_all_roommates(row, roommate_totals, split_amount):
+def handle_all_option(row, roommate_totals, split_amount):
     if "A" in row["Roommates"] and len(row["Roommates"]) > 1:
         st.write("Error: only one initial is allowed when using A")
         return False
@@ -55,27 +41,35 @@ def handle_all_roommates(row, roommate_totals, split_amount):
 
 def file_selector(folder_path="app/data"):
     filenames = os.listdir(folder_path)
-    selected_filename = st.selectbox("Select a file", filenames)
+    selected_filename = st.selectbox("Select a file", filenames, index=None, placeholder="None")
     if not selected_filename:
         return None
     return os.path.join(folder_path, selected_filename)
 
 
-# Sample data for initialization
-initial_data = {"VAT Code": ["A"], "Price": [None], "Roommates": [None]}
-
-# Create a DataFrame for the table
-df = pd.DataFrame(initial_data)
-# Ensure correct data types
-df["Price"] = df["Price"].astype("float")
-
-
 # Title for the app
 st.title("Roommate Bill Splitter")
+
+# File selection to load a saved grocery list
+filename = file_selector()
+
+if filename is not None:
+    df = pd.read_csv(
+        filename,
+        # index_col=0,
+    )
+    df.drop("Unnamed: 0", axis=1, inplace=True)
+    df = df.replace({np.nan: None})
+
+else:
+    # Sample data for initialization if no file is selected
+    initial_data = {"VAT Code": ["A"], "Price": [0], "Roommates": [None]}
+    df = pd.DataFrame(initial_data)
+print(df.columns)
 excl_vat = st.checkbox("prices excluding VAT", value=True)
-if not excl_vat:
-    # todo add validate for only correct letters kdlm a and a or c
+if not excl_vat and "VAT Code" in df.columns:
     df.drop("VAT Code", axis=1, inplace=True)
+
 # Display editable table
 df = st.data_editor(
     df,
@@ -94,8 +88,7 @@ df = st.data_editor(
             "Roommates",
             help="Write A for everyone, or the initials of the roommates",
             default="A",
-            max_chars=4,
-            # validate=r"^st\.[a-z_]+$",
+            validate=r"^([aA]|[kldmKLDM]*)$",
             required=True,
         ),
         "VAT Code": st.column_config.TextColumn(
@@ -103,15 +96,12 @@ df = st.data_editor(
             help="A or C",
             default="A",
             max_chars=1,
-            # validate=r"^st\.[a-z_]+$",
+            validate=r"^[acAC]$",
             required=True,
         ),
     },
 )
 
-# Functionality to split the total price per roommate based on relevant items
-# if st.button("Calculate Split"):
-# Create a dictionary to store totals per roommate
 roommate_totals = {"K": 0, "M": 0, "D": 0, "L": 0}
 
 for index, row in df.iterrows():
@@ -138,7 +128,7 @@ for index, row in df.iterrows():
         num_roommates = len(roommates)
     split_amount = row["Price"] * vat / num_roommates
 
-    if not handle_all_roommates(row, roommate_totals, split_amount):
+    if not handle_all_option(row, roommate_totals, split_amount):
         for roommate in roommates:
             if roommate in roommate_totals:
                 roommate_totals[roommate] += split_amount
@@ -158,7 +148,3 @@ for roommate, total in roommate_totals.items():
 
 if st.button("Save Grocery List"):
     save_grocery_list(df)
-
-filename = file_selector()
-# if st.button("Import Grocery List"):
-#     df = import_grocery_list()
