@@ -1,150 +1,104 @@
 import streamlit as st
 import pandas as pd
-from time import strftime
-import os
-import numpy as np
+from utilities.utils import calculate_split, write_split, save_grocery_list, read_grocery_list, file_selector
 
 
-def save_grocery_list(df: pd.DataFrame):
-    timestamp = strftime("%Y_%m_%d_%H_%M_%S")
-    df.to_csv(f"app/data/grocery_list_{timestamp}.csv")
+def main():
+    # Title for the app
+    st.title("Roommate Bill Splitter")
+    col1, col2 = st.columns([1, 5])
+    with col2:
+        st.write(
+            """
+                <p style="font-size: smaller; color: #D3D3D3; font-style: italic; padding-bottom: 0px;">
+                Select a file
+                </p>
+            """,
+            unsafe_allow_html=True,
+        )
+    col1, col2 = st.columns([1, 5])
 
+    with col1:
+        if st.button("Clear data"):
+            initial_data = {"VAT Code": ["A"], "Price": [0.00], "Roommates": [None]}
+            df = pd.DataFrame(initial_data)
+            st.session_state.dataframe = df
+            st.session_state.filename = None
 
-def check_names(roommates):
-    # check it only contains a,k,l,m or d
-    if roommates is None:
-        return False
-    if "A" in roommates and len(roommates) > 1:
-        st.write("Error: only one initial is allowed when using A")
-        return False
-    for name in roommates:
-        if name.upper() not in ["K", "M", "D", "L", "A"]:
-            st.write("Error: Only initials K,M,D,L or A are allowed")
-            return False
-    return True
+    with col2:
+        # File selection to load a saved grocery list
+        filename = file_selector()
 
+    if filename is not None:
+        df = read_grocery_list(filename)
+        st.session_state.dataframe = df
+        if "VAT Code" in df.columns:
+            st.session_state.vat_bool = True
+            st.session_state.vat_required = True
 
-def handle_all_option(row, roommate_totals, split_amount):
-    if "A" in row["Roommates"] and len(row["Roommates"]) > 1:
-        st.write("Error: only one initial is allowed when using A")
-        return False
-    elif "A" not in row["Roommates"]:
-        return False
-    roommates = ["K", "M", "D", "L"]
-    for roommate in roommates:
-        if roommate in roommate_totals:
-            roommate_totals[roommate] += split_amount
-        else:
-            roommate_totals[roommate] = split_amount
-    return roommate_totals
+    st.write("---")
+    if "dataframe" not in st.session_state:
+        # Sample data for initialization if no file is selected
+        initial_data = {"VAT Code": ["A"], "Price": [0.00], "Roommates": [None]}
+        df = pd.DataFrame(initial_data)
+        st.session_state.dataframe = df
+        st.session_state.vat_required = False
+    else:
+        df = st.session_state.dataframe
 
+    def check_drop():
+        global df
+        df = st.session_state.dataframe
+        if "vat_bool" in st.session_state:
+            if "VAT Code" in df.columns and st.session_state.vat_bool:
+                df.drop("VAT Code", axis=1, inplace=True)
 
-def file_selector(folder_path="app/data"):
-    filenames = os.listdir(folder_path)
-    selected_filename = st.selectbox("Select a file", filenames, index=None, placeholder="None")
-    if not selected_filename:
-        return None
-    return os.path.join(folder_path, selected_filename)
+    vat_code = st.checkbox("prices excluding VAT", key="vat_bool", on_change=check_drop)
 
+    if not vat_code and "VAT Code" in df.columns:
+        df.drop("VAT Code", axis=1, inplace=True)
+    if vat_code and "VAT Code" not in df.columns:
+        df.insert(0, "VAT Code", "")
+        df["VAT Code"] = "A"
 
-# Title for the app
-st.title("Roommate Bill Splitter")
-
-# File selection to load a saved grocery list
-filename = file_selector()
-
-if filename is not None:
-    df = pd.read_csv(
-        filename,
-        # index_col=0,
+    # Display editable table
+    df = st.data_editor(
+        df,
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "Price": st.column_config.NumberColumn(
+                "Price (€)",
+                help="The price of the product in USD",
+                min_value=0,
+                step=0.01,
+                format="%.2f",
+                required=True,
+            ),
+            "Roommates": st.column_config.TextColumn(
+                "Roommates",
+                help="Write A for everyone, or the initials of the roommates",
+                default="A",
+                validate=r"^([aA]|[kldmKLDM]*)$",
+                required=True,
+            ),
+            "VAT Code": st.column_config.TextColumn(
+                "VAT Code",
+                help="A or C",
+                default="A",
+                max_chars=1,
+                validate=r"^[acAC]$",
+                required=True,
+            ),
+        },
     )
-    df.drop("Unnamed: 0", axis=1, inplace=True)
-    df = df.replace({np.nan: None})
+    roommate_totals = calculate_split(df, vat_code)
+    write_split(roommate_totals)
+    if st.button("Save Grocery List"):
+        save_grocery_list(df)
+        st.rerun()
+        st.rerun()
 
-else:
-    # Sample data for initialization if no file is selected
-    initial_data = {"VAT Code": ["A"], "Price": [0], "Roommates": [None]}
-    df = pd.DataFrame(initial_data)
-print(df.columns)
-excl_vat = st.checkbox("prices excluding VAT", value=True)
-if not excl_vat and "VAT Code" in df.columns:
-    df.drop("VAT Code", axis=1, inplace=True)
 
-# Display editable table
-df = st.data_editor(
-    df,
-    num_rows="dynamic",
-    use_container_width=True,
-    column_config={
-        "Price": st.column_config.NumberColumn(
-            "Price (€)",
-            help="The price of the product in USD",
-            min_value=0,
-            step=0.01,
-            format="%.2f",
-            required=True,
-        ),
-        "Roommates": st.column_config.TextColumn(
-            "Roommates",
-            help="Write A for everyone, or the initials of the roommates",
-            default="A",
-            validate=r"^([aA]|[kldmKLDM]*)$",
-            required=True,
-        ),
-        "VAT Code": st.column_config.TextColumn(
-            "VAT Code",
-            help="A or C",
-            default="A",
-            max_chars=1,
-            validate=r"^[acAC]$",
-            required=True,
-        ),
-    },
-)
-
-roommate_totals = {"K": 0, "M": 0, "D": 0, "L": 0}
-
-for index, row in df.iterrows():
-    roommates = row["Roommates"]
-    if not check_names(roommates):
-        break
-    roommates = roommates.upper().strip()
-    if excl_vat:
-        if row["VAT Code"].upper() == "A":
-            vat = 1.21
-        elif row["VAT Code"].upper() == "C":
-            vat = 1.06
-        else:
-            st.write("Warning: Invalid VAT number")
-            break
-    else:
-        vat = 1
-
-    if roommates == "A":
-        num_roommates = 4
-    elif len(roommates) == 0:
-        num_roommates = 1
-    else:
-        num_roommates = len(roommates)
-    split_amount = row["Price"] * vat / num_roommates
-
-    if not handle_all_option(row, roommate_totals, split_amount):
-        for roommate in roommates:
-            if roommate in roommate_totals:
-                roommate_totals[roommate] += split_amount
-
-# Display the final amounts each roommate owes
-st.subheader("Amounts each roommate owes:")
-for roommate, total in roommate_totals.items():
-    if roommate.upper() == "K":
-        name = "Koen"
-    elif roommate.upper() == "M":
-        name = "Matthias"
-    elif roommate.upper() == "D":
-        name = "Dries"
-    elif roommate.upper() == "L":
-        name = "Lucas"
-    st.write(f"{name}: :blue-background[€{total:.2f}]")
-
-if st.button("Save Grocery List"):
-    save_grocery_list(df)
+if __name__ == "__main__":
+    main()
