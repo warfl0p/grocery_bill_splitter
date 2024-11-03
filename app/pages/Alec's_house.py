@@ -72,6 +72,7 @@ def main():
         df,
         num_rows="dynamic",
         use_container_width=True,
+        hide_index=True,
         column_config={
             "Price": st.column_config.NumberColumn(
                 "Price (€)",

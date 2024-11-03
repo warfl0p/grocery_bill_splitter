@@ -57,7 +57,7 @@ def file_selector(folder_path="app/data"):
 def calculate_split(df: pd.DataFrame, excl_vat: bool):
     roommate_totals = {"A": 0, "M": 0, "J": 0}
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         roommates = row["Roommates"]
         if not check_names(roommates):
             break
@@ -89,19 +89,18 @@ def calculate_split(df: pd.DataFrame, excl_vat: bool):
 
 
 def write_split(roommate_totals):
-    total_total: int = 0
-    for roommate, total in roommate_totals.items():
-        total_total += total
     # Display the final amounts each roommate owes
-    st.subheader("Amounts each roommate owes:")
+    st.subheader("Amount each roommate owes:")
+    total_total: int = 0
     for roommate, total in roommate_totals.items():
         if roommate.upper() == "A":
             name = "Alec"
         elif roommate.upper() == "J":
-            name = "Jef"
+            name = "Jules (J)"
         elif roommate.upper() == "M":
-            name = "Johan"
+            name = "Jonathan (M)"
         st.write(f"{name}: :blue-background[€{total:.2f}]")
+        total_total += total
     st.write("---")
 
     st.write(f"total amount: :blue-background[€{total_total:.2f}]")

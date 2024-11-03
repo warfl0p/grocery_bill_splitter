@@ -93,7 +93,7 @@ def write_split(roommate_totals):
     for roommate, total in roommate_totals.items():
         total_total += total
     # Display the final amounts each roommate owes
-    st.subheader("Amounts each roommate owes:")
+    st.subheader("Amount each roommate owes:")
     for roommate, total in roommate_totals.items():
         if roommate.upper() == "K":
             name = "Koen"
