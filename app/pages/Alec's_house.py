@@ -3,46 +3,12 @@ import pandas as pd
 from utilities.utils_alec import (
     calculate_split,
     write_split,
-    save_grocery_list,
-    read_grocery_list,
-    file_selector,
 )
 
 
 def main():
     # Title for the app
     st.title("Roommate Bill Splitter")
-    col1, col2 = st.columns([1, 5])
-    with col2:
-        st.write(
-            """
-                <p style="font-size: smaller; color: #D3D3D3; font-style: italic; padding-bottom: 0px;">
-                Select a file
-                </p>
-            """,
-            unsafe_allow_html=True,
-        )
-    col1, col2 = st.columns([1, 5])
-
-    with col1:
-        if st.button("Clear data"):
-            initial_data = {"VAT Code": ["A"], "Price": [0.00], "Roommates": [None]}
-            df = pd.DataFrame(initial_data)
-            st.session_state.dataframe = df
-            st.session_state.filename = None
-
-    with col2:
-        # File selection to load a saved grocery list
-        filename = file_selector()
-
-    if filename is not None:
-        df = read_grocery_list(filename)
-        st.session_state.dataframe = df
-        if "VAT Code" in df.columns:
-            st.session_state.vat_bool = True
-            st.session_state.vat_required = True
-
-    st.write("---")
     if "dataframe" not in st.session_state:
         # Sample data for initialization if no file is selected
         initial_data = {"VAT Code": ["A"], "Price": [0.00], "Roommates": [None]}

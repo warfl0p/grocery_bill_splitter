@@ -5,9 +5,6 @@ import streamlit as st
 import pandas as pd
 
 
-def save_grocery_list(df: pd.DataFrame):
-    timestamp = strftime("%Y_%m_%d_%H_%M_%S")
-    df.to_csv(f"app/data/grocery_list_{timestamp}.csv")
 
 
 def check_names(roommates):
@@ -38,20 +35,6 @@ def handle_all_options(row, roommate_totals, split_amount):
             roommate_totals[roommate] = split_amount
     return roommate_totals
 
-
-def file_selector(folder_path="app/data"):
-    filenames = os.listdir(folder_path)
-    selected_filename = st.selectbox(
-        "Select a file",
-        filenames,
-        index=None,
-        placeholder="None",
-        label_visibility="collapsed",
-        key="filename",
-    )
-    if not selected_filename:
-        return None
-    return os.path.join(folder_path, selected_filename)
 
 
 def calculate_split(df: pd.DataFrame, excl_vat: bool):
@@ -108,12 +91,3 @@ def write_split(roommate_totals):
 
     st.write(f"total amount: :blue-background[€{total_total:.2f}]")
 
-
-def read_grocery_list(filename):
-    df = pd.read_csv(
-        filename,
-        # index_col=0,
-    )
-    df.drop("Unnamed: 0", axis=1, inplace=True)
-    df = df.replace({np.nan: None})
-    return df
