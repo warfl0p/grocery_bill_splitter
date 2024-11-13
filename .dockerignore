@@ -1,6 +1,5 @@
 /app/data/dataframes/CSV_files/*
 /app/data/dataframes/months/*
-Finance_overview_streamlit.code-workspace
 .gitignore
 **/__pycache__/
 __pycache__
