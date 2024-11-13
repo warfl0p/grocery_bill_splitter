@@ -4,7 +4,7 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - app-data:/app
+      - ./app:/app
 
 volumes:
   app-data:

@@ -67,10 +67,6 @@ def main():
     )
     roommate_totals = calculate_split(df, vat_code)
     write_split(roommate_totals)
-    if st.button("Save Grocery List"):
-        save_grocery_list(df)
-        st.rerun()
-        st.rerun()
 
 
 if __name__ == "__main__":
